@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Детекция дефектов</title>
+  <link rel="stylesheet" href="/static/css/styles.css">
+</head>
+<body>
+  <div class="container">
+    <h1> Анализ изображений</h1>
+
+    <div class="upload-card">
+      <input type="file" id="imageUpload" accept="image/*" hidden>
+      <button class="btn" onclick="document.getElementById('imageUpload').click()">
+        Выбрать изображение
+      </button>
+      <p>или перетащите файл сюда</p>
+
+      <div class="loader">
+        <div class="spinner"></div>
+        <p>Обработка...</p>
+      </div>
+
+      <img id="imagePreview" alt="Превью">
+    </div>
+
+    <div id="results">
+      <h2>Результаты анализа</h2>
+      <div id="defectsList"></div>
+    </div>
+  </div>
+
+  <script src="/static/js/script.js"></script>
+</body>
+</html>

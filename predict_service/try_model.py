@@ -9,10 +9,11 @@ os.makedirs("results", exist_ok=True)
 model = YOLO(r"C:\codes\AI_mission\app\weights\last.pt")
 
 # Предсказание на тестовом изображении
-name = 'etalon.jpg'
-path = "images/etalon.jpg"
+name = f'10-310-ls-34-g-01.png'
+path = f"images/{name}"
 results = model.predict(path)
 
+# print(results[0].orig_img)
 # Вывод предсказаний
 print("\nРезультаты обнаружения:")
 for result in results:
@@ -35,7 +36,7 @@ for result in results:
     annotated_img_bgr = cv2.cvtColor(annotated_img, cv2.COLOR_RGB2BGR)
 
     # Показываем изображение
-    cv2.imshow("Результаты обнаружения", annotated_img_bgr)
+    cv2.imshow("Detection Results", annotated_img_bgr)
     cv2.waitKey(0)
 
     # Сохраняем результат с полным путем

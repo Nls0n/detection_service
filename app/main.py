@@ -6,34 +6,63 @@ from fastapi.responses import JSONResponse, HTMLResponse
 import app.schemas, app.models
 from dotenv import load_dotenv
 from app.database import engine, get_db, Base
+from fastapi.middleware.cors import CORSMiddleware
 import cv2
 import numpy as np
 import threading
 from predict_service.ml_service import app as model_app
 import uvicorn
 from predict_service.ml_service import model
-
+import os
+from pathlib import Path
+from visualize_predictions import PanoramaProcessor
+import uuid
 load_dotenv()
 
 application = FastAPI()
+
+
+RESULTS_DIR = "static/results"
+Path(RESULTS_DIR).mkdir(exist_ok=True)
+
 application.mount("/static", StaticFiles(directory="static"), name="static")
 templates = Jinja2Templates(directory="templates")
 
 Base.metadata.create_all(bind=engine)
 
 ml_model = model
-
-
-# mlflow.set_tracking_uri(os.getenv("MLFLOW_TRACKING_URI"))
-# mlflow_model_name = os.getenv("MLFLOW_MODEL_NAME")
-# mlflow_model_version = 1
-
-# model_name = 'наша модель'
-# model_version = 1
+processor = PanoramaProcessor()
 
 @application.get("/", response_class=HTMLResponse)
 def read_root(request: Request):
     return templates.TemplateResponse("index.html", {"request": request})
+
+@application.post("/upload")
+async def upload_image(file: UploadFile):
+    # Сохраняем загруженный файл
+    try:
+        upload_dir = "temp_uploads"
+        os.makedirs(upload_dir, exist_ok=True)
+
+        filename = f"processed_{file.filename}"
+        output_path = f"static/results/{filename}"
+        temp_path = f"temp_uploads/{file.filename}"
+        with open(temp_path, 'wb') as buffer:
+            buffer.write(await file.read())
+
+        processor = PanoramaProcessor()
+
+        # Самый простой вариант вызова - только путь к изображению
+        result_path = processor.process_image(temp_path)
+
+
+
+        return {"result_url": f"/static/results/{filename}"}
+
+    except Exception as e:
+        return {"error": str(e)}
+
+
 
 
 @application.post('/api/predict', status_code=status.HTTP_201_CREATED)
@@ -43,35 +72,67 @@ async def predict_deffect(file: UploadFile = File(...), db: Session = Depends(ge
                             content={"message": "File must be an image"})
 
     content = await file.read()
+    if len(content) == 0:
+        raise HTTPException(status_code=400, detail="File is empty")
+    temp_path = f"temp_uploads/{file.filename}"
+    with open(temp_path, 'wb') as buffer:
+        buffer.write(content)
 
-    db_image = app.models.Images(filename=file.filename, data=content, content_type=file.content_type,
-                                 expansion=f'.{file.filename.split('.')[-1]}')
-    db.add(db_image)
-    db.commit()
-    db.refresh(db_image)
-    last_image = db.query(app.models.Images).order_by(app.models.Images.id.desc()).first()
-    image_id = last_image.id if last_image else None
-    try:
-        nparr = np.frombuffer(content, np.uint8)
-        image = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
-        raw_data = model.predict(image)
+    img = cv2.imread(temp_path)
+    if img is None:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                            detail="Could not read image file")
 
-        filtered_data = {
-            "status": raw_data["status"],
-            "defects": [
-                {"class": str(val["class"]), "confidence": f'{float(val["confidence"]) * 100:.2f}%'}
-                for val in raw_data["detections"]
-            ]
+    def _slice_panorama(img: np.ndarray) -> list[np.ndarray]:
+        """Нарезка панорамы на тайлы"""
+        SIZE_MAP = {
+            (31920, 1152): 28,
+            (30780, 1152): 27,
+            (18144, 1142): 16,
         }
-        db_prediction = app.models.Detections(is_success=True, defects=filtered_data["defects"], image_id=image_id)
+        h, w = img.shape[:2]
+        tiles = SIZE_MAP.get((w, h))
+        if tiles is None:
+            raise ValueError(f"Неизвестный размер панорамы {w}×{h}")
+        tw = w // tiles
+        return [img[:, i * tw:(i + 1) * tw] for i in range(tiles)]
+    tiles = _slice_panorama(img)
+    processed_tiles = []
+    for tile in tiles:
+        res = model.predict(tile)
+        processed_tiles.append({"status": res["status"],"defects": [
+                {"class": str(val["class"]), "confidence": f'{float(val["confidence"]) * 100:.2f}%'}
+                for val in res["detections"]]})
 
-        db.add(db_prediction)
-        db.commit()
-        db.refresh(db_prediction)
-
-        return filtered_data
-    except Exception as e:
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f'Detection failed {str(e)}')
+    return processed_tiles
+    # db_image = app.models.Images(filename=file.filename, data=processed_tiles, content_type=file.content_type,
+    #                              expansion=f'.{file.filename.split('.')[-1]}')
+    # db.add(db_image)
+    # db.commit()
+    # db.refresh(db_image)
+    # last_image = db.query(app.models.Images).order_by(app.models.Images.id.desc()).first()
+    # image_id = last_image.id if last_image else None
+    # try:
+    #     nparr = np.frombuffer(content, np.uint8)
+    #     image = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
+    #     raw_data = model.predict(image)
+    #
+    #     filtered_data = {
+    #         "status": raw_data["status"],
+    #         "defects": [
+    #             {"class": str(val["class"]), "confidence": f'{float(val["confidence"]) * 100:.2f}%'}
+    #             for val in raw_data["detections"]
+    #         ]
+    #     }
+    #     db_prediction = app.models.Detections(is_success=True, defects=filtered_data["defects"], image_id=image_id)
+    #
+    #     db.add(db_prediction)
+    #     db.commit()
+    #     db.refresh(db_prediction)
+    #
+    #     return filtered_data
+    # except Exception as e:
+    #     raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f'Detection failed {str(e)}')
 
 
 @application.get('/api/image/{id}', status_code=status.HTTP_200_OK, response_model=app.schemas.GetImage)

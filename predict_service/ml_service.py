@@ -12,7 +12,7 @@ app = FastAPI()
 
 # Base.metadata.create_all(bind=engine)
 
-model = DefectDetector('weights/best.pt')
+model = DefectDetector('weights/model.pt')
 
 
 @app.post("/detect", status_code=status.HTTP_201_CREATED)

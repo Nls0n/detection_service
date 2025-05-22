@@ -1,6 +1,6 @@
 import asyncio
 from fastapi import HTTPException
-
+import numpy as np
 
 async def run_visualization_async(image_path: str, weights: str = "last.pt", conf: float = 0.15):
     try:
@@ -28,3 +28,17 @@ async def run_visualization_async(image_path: str, weights: str = "last.pt", con
             status_code=500,
             detail=f"Системная ошибка: {str(e)}"
         )
+
+def _slice_panorama(img: np.ndarray) -> list[np.ndarray]:
+    """Нарезка панорамы на тайлы"""
+    SIZE_MAP = {
+        (31920, 1152): 28,
+        (30780, 1152): 27,
+        (18144, 1142): 16,
+    }
+    h, w = img.shape[:2]
+    tiles = SIZE_MAP.get((w, h))
+    if tiles is None:
+        raise ValueError(f"Неизвестный размер панорамы {w}×{h}")
+    tw = w // tiles
+    return [img[:, i * tw:(i + 1) * tw] for i in range(tiles)]

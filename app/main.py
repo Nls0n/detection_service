@@ -7,7 +7,11 @@ import app.schemas, app.models
 from dotenv import load_dotenv
 from app.database import engine, get_db, Base
 from fastapi.middleware.cors import CORSMiddleware
+
+from app.schemas import PredictResult
+from utils import _slice_panorama
 import cv2
+from app.models import Images, Detections
 import numpy as np
 import threading
 from predict_service.ml_service import app as model_app
@@ -83,19 +87,6 @@ async def predict_deffect(file: UploadFile = File(...), db: Session = Depends(ge
         raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
                             detail="Could not read image file")
 
-    def _slice_panorama(img: np.ndarray) -> list[np.ndarray]:
-        """Нарезка панорамы на тайлы"""
-        SIZE_MAP = {
-            (31920, 1152): 28,
-            (30780, 1152): 27,
-            (18144, 1142): 16,
-        }
-        h, w = img.shape[:2]
-        tiles = SIZE_MAP.get((w, h))
-        if tiles is None:
-            raise ValueError(f"Неизвестный размер панорамы {w}×{h}")
-        tw = w // tiles
-        return [img[:, i * tw:(i + 1) * tw] for i in range(tiles)]
     tiles = _slice_panorama(img)
     processed_tiles = []
     for tile in tiles:
@@ -103,14 +94,18 @@ async def predict_deffect(file: UploadFile = File(...), db: Session = Depends(ge
         processed_tiles.append({"status": res["status"],"defects": [
                 {"class": str(val["class"]), "confidence": f'{float(val["confidence"]) * 100:.2f}%'}
                 for val in res["detections"]]})
-
+    db_image = Images(filename=file.filename, data=content, content_type=file.content_type,
+                                 expansion=f'.{file.filename.split('.')[-1]}')
+    db.add(db_image)
+    db.commit()
+    db.refresh(db_image)
+    last_image = db.query(app.models.Images).order_by(app.models.Images.id.desc()).first()
+    db_predictions = Detections(is_success=True, defects=processed_tiles, image_id=last_image.id)
+    db.add(db_predictions)
+    db.commit()
+    db.refresh(db_predictions)
     return processed_tiles
-    # db_image = app.models.Images(filename=file.filename, data=processed_tiles, content_type=file.content_type,
-    #                              expansion=f'.{file.filename.split('.')[-1]}')
-    # db.add(db_image)
-    # db.commit()
-    # db.refresh(db_image)
-    # last_image = db.query(app.models.Images).order_by(app.models.Images.id.desc()).first()
+
     # image_id = last_image.id if last_image else None
     # try:
     #     nparr = np.frombuffer(content, np.uint8)
@@ -137,7 +132,7 @@ async def predict_deffect(file: UploadFile = File(...), db: Session = Depends(ge
 
 @application.get('/api/image/{id}', status_code=status.HTTP_200_OK, response_model=app.schemas.GetImage)
 def get_image(id: int, db: Session = Depends(get_db)):
-    image = db.query(app.models.Images).filter(app.models.Images.id == id).first()
+    image = db.query(Images).filter(Images.id == id).first()
     if not image:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f'image with id {id} not found')
 
@@ -145,7 +140,7 @@ def get_image(id: int, db: Session = Depends(get_db)):
 
 @application.delete('/api/delete/image/{id}', status_code=status.HTTP_204_NO_CONTENT)
 def delete_image(id: int, db: Session = Depends(get_db)):
-    image = db.query(app.models.Images).filter(app.models.Images.id == id).first()
+    image = db.query(Images).filter(Images.id == id).first()
     if not image:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f'image with id {id} not found')
     db.delete(image)
@@ -153,7 +148,7 @@ def delete_image(id: int, db: Session = Depends(get_db)):
 
 
 if __name__ == "__main__":
-    # Запуск сервиса модели в фоне
+    # Запуск сервиса модели в другом потоке
     predictor_thread = threading.Thread(
         target=uvicorn.run,
         args=(model_app,),

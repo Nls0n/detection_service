@@ -1,7 +1,7 @@
 from sqlalchemy.orm import relationship
 from sqlalchemy.dialects.postgresql import JSONB
 from .database import Base
-from sqlalchemy import Column, Integer, VARCHAR, TIMESTAMP, text, LargeBinary, Boolean, JSON, ForeignKey
+from sqlalchemy import Column, Integer, VARCHAR, TIMESTAMP, text, LargeBinary, Boolean, ForeignKey
 
 
 class Images(Base):
@@ -18,7 +18,7 @@ class Images(Base):
 
 class Detections(Base):
     __tablename__ = 'detected'
-    predict_id = Column(Integer, nullable=False, primary_key=True)
+    predict_id = Column(Integer, nullable=False, primary_key=True, index=True)
     is_success = Column(Boolean)
     defects = Column(JSONB)
     image_id = Column(Integer, ForeignKey("images.id", ondelete="CASCADE"), nullable=False)

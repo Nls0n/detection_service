@@ -21,10 +21,9 @@ class PanoramaProcessor:
         self.FONT_SIZE = 14
         self.FONT = self._init_font()
 
-        # Пути по умолчанию (можно переопределить)
         self.DEFAULT_WEIGHTS = "weights/model.pt"
         self.DEFAULT_YAML = "data.yaml"
-        self.DEFAULT_CONF = 0.15
+        self.DEFAULT_CONF = 0.1
         self.OUTPUT_DIR = "static/results"
 
     def _init_font(self):
@@ -46,19 +45,15 @@ class PanoramaProcessor:
         Основной метод для обработки изображения
         Возвращает путь к обработанному изображению
         """
-        # Установка значений по умолчанию
         weights = weights or self.DEFAULT_WEIGHTS
         yaml_path = yaml_path or self.DEFAULT_YAML
         conf_threshold = conf_threshold or self.DEFAULT_CONF
 
-        # Создаем выходную директорию
         os.makedirs(self.OUTPUT_DIR, exist_ok=True)
 
-        # Загрузка модели и классов
         names = self._load_class_names(yaml_path)
         model = YOLO(str(weights))
 
-        # Обработка изображения
         image_path = Path(image_path)
         img = cv2.imread(str(image_path))
         if img is None:
@@ -71,7 +66,6 @@ class PanoramaProcessor:
             res = model.predict(tile, conf=conf_threshold, verbose=False)[0]
             processed_tiles.append(self._draw_preds(tile, res, names, conf_threshold))
 
-        # Склейка и сохранение результата
         result_img = self._join_tiles(processed_tiles)
         output_path = os.path.join(self.OUTPUT_DIR, f"processed_{image_path.name}")
         cv2.imwrite(output_path, cv2.cvtColor(result_img, cv2.COLOR_RGB2BGR))
@@ -131,17 +125,14 @@ class PanoramaProcessor:
         label = names.get(cls_id, str(cls_id))
 
         if is_mask:
-            # Для масок (контуры)
             pts = [(float(x), float(y)) for x, y in coords]
             drw.line(pts + [pts[0]], fill=(0, 255, 0, 255), width=2)
             x0, y0 = pts[0]
         else:
-            # Для bounding box
             x1, y1, x2, y2 = [float(v) for v in coords]
             drw.rectangle([x1, y1, x2, y2], outline=(255, 0, 0, 255), width=2)
             x0, y0 = x1, y1
 
-        # Отрисовка подписи
         tw, th = self._get_text_size(drw, label)
         drw.rectangle([x0, y0 - th - 2, x0 + tw + 4, y0], fill=(0, 0, 0, 90))
         drw.text((x0 + 2, y0 - th - 1), label, font=self.FONT, fill=(255, 255, 255, 255))
@@ -153,19 +144,3 @@ class PanoramaProcessor:
             return x1 - x0, y1 - y0
         return self.FONT.getsize(txt)
 
-
-# Пример использования:
-if __name__ == "__main__":
-    processor = PanoramaProcessor()
-
-    # Самый простой вариант вызова - только путь к изображению
-    result_path = processor.process_image("temp_uploads/926db102-5268-4120-bcbe-d5b2d1472244.jpg")
-    print(f"Результат сохранён: {result_path}")
-
-    # Вариант с переопределением параметров
-    # result_path = processor.process_image(
-    #     image_path="path/to/image.png",
-    #     weights="custom_weights.pt",
-    #     yaml_path="custom_data.yaml",
-    #     conf_threshold=0.25
-    # )

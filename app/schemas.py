@@ -4,12 +4,12 @@ from datetime import datetime
 class ExpansionError(BaseModel):
     message: str
 
+class PredictedDefects(BaseModel):
+    defects: list[dict]
 
 class SizeError(BaseModel):
     message: str
 
-# class Metrics(BaseModel):
-#     pass
 
 class UploadImage(BaseModel):
     filename: str

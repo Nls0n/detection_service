@@ -1,21 +1,32 @@
+import numpy as np
 from ultralytics import YOLO
 import cv2
 import os
-
+from PIL import Image
 # Создаем папку results, если её нет
 os.makedirs("results", exist_ok=True)
 
 # Инициализация модели
-model = YOLO(r"C:\codes\AI_mission\app\weights\last.pt")
+model = YOLO(r"C:\codes\AI_mission\app\weights\lasted.pt")
 
 # Предсказание на тестовом изображении
-name = f'10-310-ls-34-g-01.png'
+name = f't3.jpg'
 path = f"images/{name}"
 results = model.predict(path)
+
+SIZE_MAP = {
+    (31920, 1152): 28,
+    (30780, 1152): 27,
+    (18144, 1142): 16,
+}
+
+image = Image.open(path)
+size = image.size
 
 # print(results[0].orig_img)
 # Вывод предсказаний
 print("\nРезультаты обнаружения:")
+index = 1
 for result in results:
     for box in result.boxes:
         class_id = int(box.cls)
@@ -25,7 +36,7 @@ for result in results:
 
         print(f"Обнаружен: {class_name}")
         print(f"Уверенность: {confidence:.2%}")
-        print(f"Координаты: x1={bbox[0]}, y1={bbox[1]}, x2={bbox[2]}, y2={bbox[3]}")
+        print(f"Координаты: x1={bbox[0]}, y1={bbox[3]}, y2={bbox[1]}, x2={bbox[2]}")
         print("-" * 30)
 
 # Обработка и сохранение результатов

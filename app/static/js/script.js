@@ -82,6 +82,16 @@ document.addEventListener('DOMContentLoaded', () => {
                     resultLink.style.display = 'block';
                 }
             }
+            const reportResponse = await fetch('/report', {
+                method: 'GET'
+            });
+
+            if (reportResponse.ok) {
+                const reportData = await reportResponse.json();
+                if (reportData.report_url) {
+                    createDownloadLink(reportData.report_url, file.name);
+                }
+            }
 
         } catch (error) {
             console.error('Error:', error);
@@ -94,6 +104,33 @@ document.addEventListener('DOMContentLoaded', () => {
         } finally {
             loader.style.display = 'none';
         }
+    }
+
+    function createDownloadLink(reportUrl, filename = 'report') {
+        const container = document.getElementById('downloadReportContainer');
+        if (!container) {
+            console.error('Контейнер downloadReportContainer не найден');
+            return;
+        }
+
+        // Безопасная обработка имени файла
+        const safeFilename = filename ? filename.replace(/\.[^/.]+$/, "") : 'report';
+        const downloadName = `${safeFilename}_report.docx`;
+
+        container.innerHTML = `
+            <h3 style="margin-bottom: 15px;">Отчет по анализу</h3>
+            <a href="${reportUrl}" download="${downloadName}" class="result-btn">
+                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                    <polyline points="7 10 12 15 17 10"></polyline>
+                    <line x1="12" y1="15" x2="12" y2="3"></line>
+                </svg>
+                Скачать отчет (Word)
+            </a>
+            <p style="margin-top: 10px; color: var(--gray); font-size: 14px;">
+                Отчет содержит полную информацию о выявленных дефектах
+            </p>
+        `;
     }
 
     function displayDefects(results) {
@@ -165,9 +202,12 @@ document.addEventListener('DOMContentLoaded', () => {
                 result.defects.forEach((defect, i) => {
                     const defectItem = document.createElement('div');
                     defectItem.className = 'defect-item';
+
                     defectItem.innerHTML = `
                         <p class="defect-type"><strong>Дефект ${i + 1}:</strong> ${defect.class}</p>
                         <p class="defect-confidence"><strong>Уверенность:</strong> ${defect.confidence}</p>
+                        <p class="defect-coordinates"><strong>Координаты:</strong> ${defect.coordinates}</p>
+                        <p class="defect-length"><strong>Длина по линейке:</strong> ${defect.length}</p>
                     `;
                     partDiv.appendChild(defectItem);
                 });

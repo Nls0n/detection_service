@@ -1,26 +1,22 @@
 from fastapi import FastAPI, UploadFile, File, HTTPException, status, Depends, Request
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
+import httpx
 from sqlalchemy.orm import Session
 from fastapi.responses import JSONResponse, HTMLResponse
 import app.schemas, app.models
 from dotenv import load_dotenv
 from app.database import engine, get_db, Base
-from fastapi.middleware.cors import CORSMiddleware
-
-from app.schemas import PredictResult
-from utils import _slice_panorama
+from app.schemas import GetImage
+from utils import _slice_panorama, create_defects_report, ndarray_to_bytes
 import cv2
 from app.models import Images, Detections
-import numpy as np
 import threading
 from predict_service.ml_service import app as model_app
 import uvicorn
-from predict_service.ml_service import model
 import os
 from pathlib import Path
 from visualize_predictions import PanoramaProcessor
-import uuid
 load_dotenv()
 
 application = FastAPI()
@@ -34,7 +30,6 @@ templates = Jinja2Templates(directory="templates")
 
 Base.metadata.create_all(bind=engine)
 
-ml_model = model
 processor = PanoramaProcessor()
 
 @application.get("/", response_class=HTMLResponse)
@@ -43,29 +38,24 @@ def read_root(request: Request):
 
 @application.post("/upload")
 async def upload_image(file: UploadFile):
-    # Сохраняем загруженный файл
     try:
         upload_dir = "temp_uploads"
         os.makedirs(upload_dir, exist_ok=True)
 
-        filename = f"processed_{file.filename}"
-        output_path = f"static/results/{filename}"
         temp_path = f"temp_uploads/{file.filename}"
         with open(temp_path, 'wb') as buffer:
             buffer.write(await file.read())
 
         processor = PanoramaProcessor()
 
-        # Самый простой вариант вызова - только путь к изображению
         result_path = processor.process_image(temp_path)
 
 
 
-        return {"result_url": f"/static/results/{filename}"}
+        return {"result_url": f"{result_path}"}
 
     except Exception as e:
         return {"error": str(e)}
-
 
 
 
@@ -86,14 +76,30 @@ async def predict_deffect(file: UploadFile = File(...), db: Session = Depends(ge
     if img is None:
         raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
                             detail="Could not read image file")
-
     tiles = _slice_panorama(img)
     processed_tiles = []
-    for tile in tiles:
-        res = model.predict(tile)
-        processed_tiles.append({"status": res["status"],"defects": [
-                {"class": str(val["class"]), "confidence": f'{float(val["confidence"]) * 100:.2f}%'}
+    index = 1
+    async with httpx.AsyncClient() as client:
+        for tile in tiles:
+            files = {'file': ('filename.png', ndarray_to_bytes(tile), 'image/png')}
+
+            response = await client.post(
+                "http://localhost:8001/detect",
+                files=files
+            )
+
+            if response.status_code != 201:
+                raise HTTPException(
+                    status_code=response.status_code,
+                    detail=f"ML service error: {response.text}"
+                )
+
+            res = response.json()
+            processed_tiles.append({"status": res["status"],"defects": [
+                    {"class": str(val["class"]), "confidence": f'{float(val["confidence"]) * 100:.2f}%',
+                    "index": val["index"], "coordinates": val["coordinates"], "length": val["length"]}
                 for val in res["detections"]]})
+            index+=1
     db_image = Images(filename=file.filename, data=content, content_type=file.content_type,
                                  expansion=f'.{file.filename.split('.')[-1]}')
     db.add(db_image)
@@ -104,51 +110,34 @@ async def predict_deffect(file: UploadFile = File(...), db: Session = Depends(ge
     db.add(db_predictions)
     db.commit()
     db.refresh(db_predictions)
+    create_defects_report(processed_tiles)
     return processed_tiles
 
-    # image_id = last_image.id if last_image else None
-    # try:
-    #     nparr = np.frombuffer(content, np.uint8)
-    #     image = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
-    #     raw_data = model.predict(image)
-    #
-    #     filtered_data = {
-    #         "status": raw_data["status"],
-    #         "defects": [
-    #             {"class": str(val["class"]), "confidence": f'{float(val["confidence"]) * 100:.2f}%'}
-    #             for val in raw_data["detections"]
-    #         ]
-    #     }
-    #     db_prediction = app.models.Detections(is_success=True, defects=filtered_data["defects"], image_id=image_id)
-    #
-    #     db.add(db_prediction)
-    #     db.commit()
-    #     db.refresh(db_prediction)
-    #
-    #     return filtered_data
-    # except Exception as e:
-    #     raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f'Detection failed {str(e)}')
-
-
-@application.get('/api/image/{id}', status_code=status.HTTP_200_OK, response_model=app.schemas.GetImage)
-def get_image(id: int, db: Session = Depends(get_db)):
-    image = db.query(Images).filter(Images.id == id).first()
+@application.get('/api/image/{filename}', status_code=status.HTTP_200_OK, response_model=GetImage)
+def get_image(filename: str, db: Session = Depends(get_db)):
+    image = db.query(Images).filter(Images.filename == filename).first()
     if not image:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f'image with id {id} not found')
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f'image with name {filename} not found')
 
     return image
 
-@application.delete('/api/delete/image/{id}', status_code=status.HTTP_204_NO_CONTENT)
-def delete_image(id: int, db: Session = Depends(get_db)):
-    image = db.query(Images).filter(Images.id == id).first()
+@application.delete('/api/delete/image/{filename}', status_code=status.HTTP_204_NO_CONTENT)
+def delete_image(filename: str, db: Session = Depends(get_db)):
+    image = db.query(Images).filter(Images.filename == filename).first()
     if not image:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f'image with id {id} not found')
     db.delete(image)
     db.commit()
 
 
+@application.get('/report', status_code=status.HTTP_200_OK)
+def get_report():
+    if not os.path.exists('static/reports/defects_report.docx'):
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail='report not found')
+
+    return {'report_url': 'static/reports/defects_report.docx'}
+
 if __name__ == "__main__":
-    # Запуск сервиса модели в другом потоке
     predictor_thread = threading.Thread(
         target=uvicorn.run,
         args=(model_app,),
@@ -157,5 +146,4 @@ if __name__ == "__main__":
     )
     predictor_thread.start()
 
-    # Запуск основного API
     uvicorn.run(application, host="0.0.0.0", port=8000)

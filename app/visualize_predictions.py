@@ -21,7 +21,7 @@ class PanoramaProcessor:
         self.FONT_SIZE = 14
         self.FONT = self._init_font()
 
-        self.DEFAULT_WEIGHTS = "weights/model.pt"
+        self.DEFAULT_WEIGHTS = "weights/best.pt"
         self.DEFAULT_YAML = "data.yaml"
         self.DEFAULT_CONF = 0.1
         self.OUTPUT_DIR = "static/results"
@@ -143,4 +143,5 @@ class PanoramaProcessor:
             x0, y0, x1, y1 = drw.textbbox((0, 0), txt, font=self.FONT)
             return x1 - x0, y1 - y0
         return self.FONT.getsize(txt)
+
 

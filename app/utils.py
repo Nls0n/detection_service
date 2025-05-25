@@ -1,4 +1,5 @@
 import asyncio
+
 from fastapi import HTTPException
 from docx import Document
 from docx.shared import Pt
@@ -24,7 +25,7 @@ def ndarray_to_bytes(image_array: np.ndarray, format: str = "jpg") -> bytes:
 
     return encoded_image.tobytes()
 
-async def run_visualization_async(image_path: str, weights: str = "last.pt", conf: float = 0.15):
+async def run_visualization_async(image_path: str, weights: str = "model.pt", conf: float = 0.1):
     try:
         process = await asyncio.create_subprocess_exec(
             "python",

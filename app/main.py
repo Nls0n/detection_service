@@ -17,6 +17,7 @@ import uvicorn
 import os
 from pathlib import Path
 from visualize_predictions import PanoramaProcessor
+
 load_dotenv()
 
 application = FastAPI()

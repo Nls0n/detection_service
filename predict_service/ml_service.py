@@ -10,7 +10,7 @@ load_dotenv()
 app = FastAPI()
 
 
-model = DefectDetector('weights/model.pt')
+model = DefectDetector('weights/best.pt')
 
 
 @app.post("/detect", status_code=status.HTTP_201_CREATED)

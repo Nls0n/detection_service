@@ -1,3 +1,0 @@
-[submodule "previous_version_w_docker_and_jaeger"]
-	path = previous_version_w_docker_and_jaeger
-	url = https://github.com/EgorSinitsyn/AI_weld_analisys.git

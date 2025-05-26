@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Анализ дефектов</title>
+    <link rel="stylesheet" href="/static/css/styles.css">
+</head>
+<body>
+    <div class="container">
+        <h1>Анализ изображений на дефекты</h1>
+
+        <div class="upload-card" id="uploadCard">
+            <input type="file" id="imageUpload" accept="image/*" hidden>
+            <label for="imageUpload" class="upload-btn">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h7"></path>
+                    <line x1="16" y1="5" x2="22" y2="5"></line>
+                    <line x1="19" y1="2" x2="19" y2="8"></line>
+                    <circle cx="9" cy="9" r="2"></circle>
+                    <path d="M21 15l-3.086-3.086a2 2 0 0 0-2.828 0L6 21"></path>
+                </svg>
+                Выберите изображение
+            </label>
+            <p class="drag-text">или перетащите файл сюда</p>
+
+            <div class="loader" id="loader">
+                <div class="spinner"></div>
+                <p>Обработка...</p>
+            </div>
+
+            <img id="imagePreview" class="preview-image" alt="Превью">
+        </div>
+
+        <div id="results" class="results-container">
+            <h2>Результаты анализа</h2>
+            <div id="defectsList" class="defects-list"></div>
+
+            <!-- Новый контейнер для ссылки скачивания -->
+            <div id="downloadReportContainer" class="download-report"></div>
+
+            <div id="resultLink" class="result-link">
+                <h3>Обработанное изображение</h3>
+                <a id="processedImageLink" target="_blank" class="result-btn">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                        <polyline points="7 10 12 15 17 10"></polyline>
+                        <line x1="12" y1="15" x2="12" y2="3"></line>
+                    </svg>
+                    Открыть результат
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <script src="/static/js/script.js"></script>
+</body>
+</html>

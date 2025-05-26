@@ -1,0 +1,33 @@
+names:
+  0: "пора"
+  1: "включение"
+  2: "подрез"
+  3: "прожог"
+  4: "трещина"
+  5: "наплыв"
+  6: "эталон1"
+  7: "эталон2"
+  8: "эталон3"
+  9: "пора-скрытая"
+  10: "утяжина"
+  11: "несплавление"
+  12: "непровар корня"
+
+train: ./dataset/train.txt
+val: ./dataset/val.txt
+test: ./dataset/test.txt
+
+class_weight: [1.0, 1.0, 1.0, 0, 0, 0, 1.0, 1.0, 0, 0, 1.0, 1.0, 1.0]
+
+augmentation:
+  hsv_h: 0.01
+  hsv_s: 0.0
+  hsv_v: 0.0
+  degrees: 0.3
+  shear: 0.0
+  mosaic: 0.0
+  mixup: 0.0
+  copy_paste: 0.0
+
+anchors: [4,5, 8,10, 12,16]
+anchor_t: 2.5

@@ -1,0 +1,36 @@
+#.gitignore
+.idea/
+./venv/
+DS_Store
+
+# Картинки
+data/films-1000/
+!data/films-1000/.gitkeep
+data/images/test/
+data/images/val/
+data/images/train/samples/
+data/images/train/origin/
+!data/images/train/origin/.gitkeep
+../APPLICATION/app/images/*
+!../APPLICATION/app/images/.gitkeep
+../APPLICATION/app/static/results/*
+!../APPLICATION/app/static/results/.gitkeep
+../APPLICATION/app/temp_uploads/*
+!../APPLICATION/app/temp_uploads/.gitkeep
+../APPLICATION/predict_service/images/*
+!../APPLICATION/predict_service/images/.gitkeep
+../APPLICATION/predict_service/results/*
+!../APPLICATION/predict_service/results/.gitkeep
+
+# Разметка
+data/labels/test/
+data/labels/val/
+data/labels/train/samples/
+data/labels/train/origin/
+
+# .txt
+data/train.txt
+data/val.txt
+data/test.txt
+data/train_samples.txt
+data/val_samples.txt

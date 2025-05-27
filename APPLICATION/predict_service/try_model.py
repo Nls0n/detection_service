@@ -11,7 +11,7 @@ from pathlib import Path
 BASE_DIR = Path(__file__).resolve().parent
 
 # 2) Формируем путь к весам относительно BASE_DIR
-WEIGHTS = BASE_DIR / "app" / "weights" / "model.pt"   # или "lasted.pt", если нужно
+WEIGHTS = BASE_DIR / "app" / "weights" / "best.pt"
 
 # 3) Грузим модель
 model = YOLO(str(WEIGHTS))

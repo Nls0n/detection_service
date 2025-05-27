@@ -30,9 +30,9 @@ class PanoramaProcessor:
         self.FONT = self._init_font()
 
         base_dir = Path(__file__).resolve().parent
-        self.DEFAULT_WEIGHTS = str(base_dir / "weights" / "model.pt")
+        self.DEFAULT_WEIGHTS = str(base_dir / "weights" / "best.pt")
         self.DEFAULT_YAML = str(base_dir / "data.yaml")
-        # self.DEFAULT_WEIGHTS = "weights/model.pt"
+        # self.DEFAULT_WEIGHTS = "weights/best.pt"
         # self.DEFAULT_YAML = "data.yaml"
         self.DEFAULT_CONF = 0.1
         # self.OUTPUT_DIR = "static/results"

@@ -11,9 +11,9 @@ load_dotenv()
 app = FastAPI()
 
 
-# model = DefectDetector('weights/model.pt')
+# model = DefectDetector('weights/best.pt')
 HERE = os.path.dirname(__file__)
-model_path = os.getenv("MODEL_PATH", os.path.join(HERE, "../app/weights/model.pt"))
+model_path = os.getenv("MODEL_PATH", os.path.join(HERE, "../app/weights/best.pt"))
 model = DefectDetector(model_path)
 
 @app.post("/detect", status_code=status.HTTP_201_CREATED)

@@ -1,4 +1,4 @@
-# AI_Weld_Analysis 🚀  
+# Detection service   
 
 ---
 **Мультиконтейнерное приложение для идентификации и визуализации дефектов сварного шва на панорамных изображениях-рентгенограммах.**
@@ -40,8 +40,8 @@
 
 1) Клонируем репозиторий
 ```bash
-git clone https://github.com/EgorSinitsyn/AI_weld_analisys
-cd AI_weld_analisys/
+git clone https://github.com/Nls0n/detection_service
+cd detection_service
 ```
 2) Сборка и запуск приложения
 ```bash
